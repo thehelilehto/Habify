@@ -107,14 +107,14 @@ S.habits.forEach(h=>{h.schedule ||= {type:'daily',days:[1,2,3,4,5,6,0],times:3};
 function dateObj(d){return new Date(d+'T12:00:00')}
 function scheduled(h,d){let a=h.schedule||{type:'daily'},day=dateObj(d).getDay();return a.type==='daily'||a.type==='weekly'||(a.type==='weekdays'&&(a.days||[]).includes(day))}
 function weekKey(d){let x=dateObj(d),day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x.toLocaleDateString('en-CA')}
-function val(h,d=selected){return Number(S.values[d]?.[h.id]??(done(h.id,d)?(h.target||1):0))}
-function completed(h,d=selected){return val(h,d)>=(h.target||1)}
+function val(h,d=selected){const saved=S.values?.[d]?.[h.id];if(saved!==undefined&&saved!==null)return Number(saved)||0;return Array.isArray(S.checks?.[d])&&S.checks[d].includes(h.id)?(Number(h.target)||1):0}
+function completed(h,d=selected){return val(h,d)>=(Number(h.target)||1)}
 function isWeekly(h){return h.schedule?.type==='weekly'}
 function weeklyDone(h,d){let w=weekKey(d),n=0;for(let i=0;i<7;i++){let a=dateObj(w);a.setDate(a.getDate()+i);if(completed(h,a.toLocaleDateString('en-CA')))n++}return n}
 function dueHabits(d=selected){return S.habits.filter(h=>scheduled(h,d))}
 function progress(d=selected){let hs=dueHabits(d);return hs.length?hs.reduce((n,h)=>n+(isWeekly(h)?Math.min(1,weeklyDone(h,d)/(h.schedule.times||1)):Math.min(1,val(h,d)/(h.target||1))),0)/hs.length:0}
 function count(d=selected){return dueHabits(d).filter(h=>isWeekly(h)?weeklyDone(h,d)>=(h.schedule.times||1):completed(h,d)).length}
-function done(id,d=selected){let h=S.habits.find(x=>x.id===id);return h?completed(h,d):false}
+function done(id,d=selected){const h=S.habits.find(x=>x.id===id);return h?completed(h,d):false}
 function habitsList(){let hs=dueHabits();return `<div class="scroll">${hs.map(h=>{let v=val(h),goal=h.target||1,cat=S.categories.find(c=>c.name===h.category);return `<div class="habitrow enhanced-habit"><span style="color:${cat?.color||'#9ba9e5'}">${esc(cat?.icon||'◇')}</span><button class="habit-check ${completed(h)?'checked':''}" onclick="toggle(${h.id})" aria-label="Complete ${esc(h.name)}">${completed(h)?'✓':''}</button><span class="habit-name">${esc(h.name)}<small>${isWeekly(h)?`${weeklyDone(h,selected)}/${h.schedule.times||1} days this week`:goal>1?`${v}/${goal} ${esc(h.unit)}`:''}</small></span>${goal>1&&!isWeekly(h)?`<button class="tiny" onclick="logHabit(${h.id})">＋</button>`:''}</div>`}).join('')||'<p class="muted">No habits scheduled for this day.</p>'}</div>`}
 function toggle(id){let h=S.habits.find(x=>x.id===id);if(!h)return;S.values[selected] ||= {};let was=completed(h);S.values[selected][id]=was?0:(h.target||1);let a=S.checks[selected]||[];S.checks[selected]=was?a.filter(x=>x!==id):[...new Set([...a,id])];save();render();celebrate('habit');if(!was&&progress()>=1){celebrate('lily');toast('Your lily is in full bloom ✨')}}
 function logHabit(id){let h=S.habits.find(x=>x.id===id);if(!h)return;S.values[selected]||={};S.values[selected][id]=Math.min(h.target||1,val(h)+1);save();render();celebrate('habit')}
